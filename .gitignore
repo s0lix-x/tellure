@@ -1,0 +1,12 @@
+node_modules/
+.env
+dist/
+build/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+ios/Pods/
+android/.gradle/
+.idea/
+.vscode/
+*.log
