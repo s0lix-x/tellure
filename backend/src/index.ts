@@ -2,6 +2,7 @@ import express from "express";
 import "dotenv/config";
 import type { Request, Response } from "express";
 import authRoutes from "./routes/auth.routes";
+import cagesRoutes from "./routes/cages.routes";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -15,5 +16,7 @@ app.get("/", (req: Request, res: Response) => {
 });
 
 app.use("/api/auth", authRoutes);
+
+app.use("/api/v1/cages", cagesRoutes)
 
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
