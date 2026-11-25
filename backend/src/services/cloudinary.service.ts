@@ -16,3 +16,13 @@ export const uploadToCloudinary = (
     uploadStream.end(fileBuffer);
   });
 };
+
+export const deleteFromCloudinary = async (publicId: string): Promise<void> => {
+  const result = await cloudinary.uploader.destroy(publicId);
+
+  if (result.result !== "ok") {
+    throw new Error(
+      `Gagal menghapus gambar dengan ID ${publicId} dari Cloudinary.`,
+    );
+  }
+};

@@ -16,6 +16,12 @@ export const BOOKING_STATUSES = [
   "completed",
   "cancelled",
 ] as const;
+export const CARE_TYPES = [
+  "feeding",
+  "bathing",
+  "playtime",
+  "health_check",
+] as const;
 
 export const users = mysqlTable("users", {
   id: int("id").primaryKey().autoincrement(),
@@ -32,6 +38,9 @@ export const cages = mysqlTable("cages", {
   name: varchar("name", { length: 100 }).notNull(),
   price: int("price").notNull(),
   description: text("description"),
+  acceptedTypes: varchar("accepted_types", { length: 255 })
+    .notNull()
+    .default("[]"),
   isAvailable: boolean("is_available").notNull().default(true),
   imageUrl: varchar("image_url", { length: 255 }).notNull(),
   imagePublicId: varchar("image_public_id", { length: 255 }).notNull(),
@@ -69,5 +78,36 @@ export const bookings = mysqlTable("bookings", {
   durationDays: int("duration_days").notNull(),
   totalPrice: int("total_price").notNull(),
   status: mysqlEnum("status", BOOKING_STATUSES).notNull().default("pending"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const bookingStatusHistory = mysqlTable("booking_status_history", {
+  id: int("id").primaryKey().autoincrement(),
+  bookingId: int("booking_id")
+    .notNull()
+    .references(() => bookings.id),
+  status: mysqlEnum("status", [
+    "pending",
+    "approved",
+    "rejected",
+    "completed",
+    "cancelled",
+  ]).notNull(),
+  note: varchar("note", { length: 255 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const careUpdates = mysqlTable("care_updates", {
+  id: int("id").primaryKey().autoincrement(),
+  bookingId: int("booking_id")
+    .notNull()
+    .references(() => bookings.id),
+  staffId: int("staff_id")
+    .notNull()
+    .references(() => users.id),
+  type: mysqlEnum("type", CARE_TYPES).notNull(),
+  note: varchar("note", { length: 255 }),
+  photoUrl: varchar("photo_url", { length: 255 }).notNull(),
+  photoPublicId: varchar("photo_public_id", { length: 255 }).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
