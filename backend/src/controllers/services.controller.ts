@@ -2,7 +2,10 @@ import { Request, Response } from "express";
 import { createServiceSchema } from "../validations/service.validation";
 import { db } from "../config/db";
 import { services } from "../config/schema";
-import { uploadToCloudinary } from "../services/cloudinary.service";
+import {
+  deleteFromCloudinary,
+  uploadToCloudinary,
+} from "../services/cloudinary.service";
 import { eq } from "drizzle-orm";
 
 export const getAllServices = async (req: Request, res: Response) => {
@@ -12,7 +15,7 @@ export const getAllServices = async (req: Request, res: Response) => {
     return res.status(200).json({
       success: true,
       message: "Berhasil mengambil semua layanan.",
-      data: { services: data },
+      data,
     });
   } catch (error) {
     console.error(error);
@@ -62,7 +65,7 @@ export const createService = async (req: Request, res: Response) => {
     return res.status(201).json({
       success: true,
       message: "Services berhasil dibuat.",
-      data: { service: newServices },
+      data: newServices,
     });
   } catch (error) {
     console.error(error);
@@ -71,5 +74,33 @@ export const createService = async (req: Request, res: Response) => {
       success: false,
       message: "Terjadi kesalahan pada server.",
     });
+  }
+};
+
+export const deleteService = async (req: Request, res: Response) => {
+  try {
+    const id = Number(req.params.id);
+    const service = await db.query.services.findFirst({
+      where: eq(services.id, id),
+    });
+
+    if (!service)
+      return res
+        .status(404)
+        .json({ success: false, message: "Layanan tidak ditemukan" });
+
+    if (service.imagePublicId) {
+      await deleteFromCloudinary(service.imagePublicId);
+    }
+
+    await db.delete(services).where(eq(services.id, id));
+
+    return res
+      .status(200)
+      .json({ success: true, message: "Layanan berhasil dihapus" });
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ success: false, message: "Terjadi kesalahan pada server." });
   }
 };
