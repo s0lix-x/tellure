@@ -11,6 +11,7 @@ import { createBookingSchema } from "../validations/booking.validation";
 import { eq, and, lt, gt, desc } from "drizzle-orm";
 
 const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
+const validStatuses = ["approved", "rejected", "completed", "cancelled"];
 
 interface AuthenticatedRequest extends Request {
   user?: { id: number; role: string; [key: string]: any };
@@ -175,36 +176,53 @@ export const getMyBookings = async (
 ) => {
   try {
     const userId = req.user?.id;
-    if (!userId)
+    const isAdmin = req.user?.role === "admin";
+
+    if (!userId) {
       return res.status(401).json({ success: false, message: "Unauthorized" });
-
-    const statusFilter = req.query.status as string | undefined;
-
-    let query = db.select().from(bookings).where(eq(bookings.userId, userId));
-
-    if (
-      statusFilter &&
-      ["pending", "approved", "rejected", "completed", "cancelled"].includes(
-        statusFilter,
-      )
-    ) {
-      query = db
-        .select()
-        .from(bookings)
-        .where(
-          and(
-            eq(bookings.userId, userId),
-            eq(bookings.status, statusFilter as any),
-          ),
-        );
     }
 
-    const myBookings = await query.orderBy(desc(bookings.createdAt));
+    const statusFilter = req.query.status as string | undefined;
+    let myBookings;
+
+    if (isAdmin) {
+      if (statusFilter) {
+        myBookings = await db
+          .select()
+          .from(bookings)
+          .where(eq(bookings.status, statusFilter as any))
+          .orderBy(desc(bookings.createdAt));
+      } else {
+        myBookings = await db
+          .select()
+          .from(bookings)
+          .orderBy(desc(bookings.createdAt));
+      }
+    } else {
+      if (statusFilter) {
+        myBookings = await db
+          .select()
+          .from(bookings)
+          .where(
+            and(
+              eq(bookings.userId, userId),
+              eq(bookings.status, statusFilter as any),
+            ),
+          )
+          .orderBy(desc(bookings.createdAt));
+      } else {
+        myBookings = await db
+          .select()
+          .from(bookings)
+          .where(eq(bookings.userId, userId))
+          .orderBy(desc(bookings.createdAt));
+      }
+    }
 
     return res.status(200).json({
       success: true,
       message: "Daftar booking berhasil diambil.",
-      data: { bookings: myBookings },
+      data: myBookings,
     });
   } catch (error) {
     console.error(error);
@@ -224,25 +242,15 @@ export const updateBookingStatus = async (
     const isAdmin = req.user?.role === "admin";
 
     if (!userId || !isAdmin) {
-      return res
-        .status(403)
-        .json({
-          success: false,
-          message: "Hanya admin yang boleh ubah status.",
-        });
+      return res.status(403).json({
+        success: false,
+        message: "Hanya admin yang boleh ubah status.",
+      });
     }
 
     const bookingId = Number(req.params.id);
     const { status, note } = req.body;
 
-    // Validasi status enum
-    const validStatuses = [
-      "pending",
-      "approved",
-      "rejected",
-      "completed",
-      "cancelled",
-    ];
     if (!validStatuses.includes(status)) {
       return res
         .status(400)
