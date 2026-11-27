@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { db } from "../config/db";
 import { careUpdates, bookings } from "../config/schema";
 import { createCareUpdateSchema } from "../validations/care-update.validation";
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { uploadToCloudinary } from "../services/cloudinary.service";
 
 interface AuthenticatedRequest extends Request {
@@ -18,12 +18,10 @@ export const createCareUpdate = async (
     const isAdmin = req.user?.role === "admin";
 
     if (!userId || !isAdmin) {
-      return res
-        .status(403)
-        .json({
-          success: false,
-          message: "Hanya admin yang boleh input jurnal.",
-        });
+      return res.status(403).json({
+        success: false,
+        message: "Hanya admin yang boleh input jurnal.",
+      });
     }
 
     const parsed = createCareUpdateSchema.safeParse(req.body);
@@ -50,7 +48,6 @@ export const createCareUpdate = async (
         .json({ success: false, message: "Foto jurnal wajib diupload." });
     }
 
-    // ✅ PANGGIL FUNGSI LO BENAR: cuma 1 argumen (Buffer)
     const cloudinaryResult = await uploadToCloudinary(req.file.buffer);
 
     const [newUpdate] = await db
@@ -73,6 +70,37 @@ export const createCareUpdate = async (
       success: true,
       message: "Jurnal foto berhasil ditambahkan.",
       data: updateDetail,
+    });
+  } catch (error) {
+    console.error(error);
+    return res
+      .status(500)
+      .json({ success: false, message: "Terjadi kesalahan pada server." });
+  }
+};
+
+export const getCareUpdatesByBooking = async (
+  req: AuthenticatedRequest,
+  res: Response,
+) => {
+  try {
+    const bookingId = Number(req.query.bookingId);
+
+    if (isNaN(bookingId)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "bookingId wajib disertakan." });
+    }
+
+    const updates = await db.query.careUpdates.findMany({
+      where: eq(careUpdates.bookingId, bookingId),
+      orderBy: [desc(careUpdates.createdAt)],
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Jurnal foto berhasil diambil.",
+      data: { updates },
     });
   } catch (error) {
     console.error(error);
