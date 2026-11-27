@@ -213,3 +213,72 @@ export const getMyBookings = async (
       .json({ success: false, message: "Terjadi kesalahan pada server." });
   }
 };
+
+// PATCH /bookings/:id/status
+export const updateBookingStatus = async (
+  req: AuthenticatedRequest,
+  res: Response,
+) => {
+  try {
+    const userId = req.user?.id;
+    const isAdmin = req.user?.role === "admin";
+
+    if (!userId || !isAdmin) {
+      return res
+        .status(403)
+        .json({
+          success: false,
+          message: "Hanya admin yang boleh ubah status.",
+        });
+    }
+
+    const bookingId = Number(req.params.id);
+    const { status, note } = req.body;
+
+    // Validasi status enum
+    const validStatuses = [
+      "pending",
+      "approved",
+      "rejected",
+      "completed",
+      "cancelled",
+    ];
+    if (!validStatuses.includes(status)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Status tidak valid." });
+    }
+
+    // Cek booking exists
+    const booking = await db.query.bookings.findFirst({
+      where: eq(bookings.id, bookingId),
+    });
+    if (!booking)
+      return res
+        .status(404)
+        .json({ success: false, message: "Booking tidak ditemukan." });
+
+    await db.update(bookings).set({ status }).where(eq(bookings.id, bookingId));
+
+    await db.insert(bookingStatusHistory).values({
+      bookingId,
+      status,
+      note: note || `Status diubah menjadi ${status} oleh admin.`,
+    });
+
+    const updatedBooking = await db.query.bookings.findFirst({
+      where: eq(bookings.id, bookingId),
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Status booking berhasil diperbarui.",
+      data: updatedBooking,
+    });
+  } catch (error) {
+    console.error(error);
+    return res
+      .status(500)
+      .json({ success: false, message: "Terjadi kesalahan pada server." });
+  }
+};

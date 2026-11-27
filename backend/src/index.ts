@@ -4,6 +4,11 @@ import type { Request, Response } from "express";
 import authRoutes from "./routes/auth.routes";
 import cagesRoutes from "./routes/cages.routes";
 import servicesRoutes from "./routes/services.routes";
+import swaggerUi from "swagger-ui-express";
+import { swaggerSpec } from "./config/swagger";
+import bookingsRoutes from "./routes/bookings.routes";
+import careUpdatesRoutes from "./routes/care-updates.routes";
+import usersRoutes from "./routes/users.routes";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -18,8 +23,16 @@ app.get("/", (req: Request, res: Response) => {
 
 app.use("/api/auth", authRoutes);
 
+app.use("/api/v1/users", usersRoutes);
+
 app.use("/api/v1/cages", cagesRoutes);
 
 app.use("/api/v1/services", servicesRoutes);
+
+app.use("/api/v1/bookings", bookingsRoutes);
+
+app.use("/api/v1/care-updates", careUpdatesRoutes);
+
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
